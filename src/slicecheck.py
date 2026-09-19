@@ -5,12 +5,21 @@
 
     python3 src/slicecheck.py [path/to/windowsill.3mf]
 
-Proves what the volume checks cannot: that Bambu Studio opens the file with
-one part on each plate, inside the bed, and slices every plate using only the
-settings inside the 3MF. Needs Bambu Studio installed (bambu-studio on PATH);
-writes only into build/slicecheck/, and keeps no G-code.
+Proves what the volume checks cannot:
+
+  1. every setting in the 3MF that differs from its stock system preset is
+     declared in different_settings_to_system. The app resets anything
+     undeclared to stock when the project is opened — the headless slicer does
+     not, so step 2 alone cannot catch it (v3's 4 walls were lost this way);
+  2. Bambu Studio opens the file with one part on each plate, inside the bed,
+     and slices every plate using only the settings inside the 3MF.
+
+Needs Bambu Studio installed (bambu-studio on PATH); writes only into
+build/slicecheck/, and keeps no G-code.
 """
-import json, os, shutil, subprocess, sys
+import json, os, shutil, subprocess, sys, zipfile
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bambu'))
+import presets
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,6 +28,13 @@ def main(argv):
     exe = shutil.which('bambu-studio')
     if not exe:
         sys.exit('bambu-studio is not on PATH — cannot slice-check')
+    ps = json.load(zipfile.ZipFile(src).open('Metadata/project_settings.config'))
+    bad = presets.undeclared(ps)
+    print('declared changes from stock: %s' % (ps.get('different_settings_to_system') or 'none'))
+    for kind, k, pv, sv in bad:
+        print('UNDECLARED %s %s: %s (stock %s) — the app will reset this' % (kind, k, pv, sv))
+    if bad:
+        sys.exit('slice-check FAILED — undeclared settings')
     out = os.path.join(ROOT, 'build', 'slicecheck')
     shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
     r = subprocess.run([exe, '--debug', '1', '--slice', '0', '--outputdir', out, src],

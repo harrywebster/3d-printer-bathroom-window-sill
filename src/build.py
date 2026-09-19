@@ -22,6 +22,7 @@ from shapely.affinity import translate
 import trimesh, render
 
 OUT = os.path.join(os.environ.get('SILL_OUT', 'build'), '')
+SETTINGS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bambu', 'project_settings.config')
 BED, BRIM = 256.0, 5.0                    # Bambu Lab A1
 GREY = (0.60, 0.62, 0.64)                 # PLA Basic Grey
 PART_TINT = [(0.60, 0.62, 0.64), (0.55, 0.57, 0.60), (0.60, 0.62, 0.64),
@@ -435,11 +436,12 @@ def export(g, parts, tag):
     ms.append('  <assemble>\n  </assemble>\n</config>\n')
 
     # A Bambu Studio project must carry a complete settings block: with only a
-    # key or two Bambu Studio 2.08 segfaults on load. src/bambu/ holds one that
-    # Bambu Studio wrote from its own A1 0.4 / 0.20mm Standard / PLA Basic
-    # system presets, with 4 walls, a 5 mm brim, supports off (auto-support
-    # would fill the air channels) and the grey filament colour.
-    ps = open(os.path.join(os.path.dirname(__file__), 'bambu', 'project_settings.config')).read()
+    # key or two Bambu Studio 2.08 segfaults on load. It is the A1 0.4 /
+    # 0.20mm Standard / PLA Basic system presets as written by Bambu Studio,
+    # and every deliberate change from them is listed in
+    # different_settings_to_system — the app resets anything unlisted to stock
+    # on open. `make slice-check` proves nothing is left unlisted.
+    ps = open(SETTINGS).read()
     ct = ('<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org'
           '/package/2006/content-types"><Default Extension="rels" ContentType="application/'
           'vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" '
@@ -481,10 +483,16 @@ HISTORY = [
            'back to keep 1.6 mm cover. Its 3MF opens with every part off the bed — '
            'use v3'),
     ('v3', 'geometry unchanged from v2; the 3MF is now a Bambu Studio project, one '
-           'part per plate, with the print settings built in'),
+           'part per plate. Its 4 walls and 5 mm brim were reset to stock when the '
+           'project was opened in the app'),
+    ('v4', 'geometry unchanged; print settings are stock 0.20mm Standard with 10% '
+           'infill instead of 15%, declared as a change so the app keeps it'),
 ]
 
 def readme(g, parts, tag, res):
+    import json
+    ps = json.load(open(SETTINGS))
+    changed = [k for k in ps['different_settings_to_system'][0].split(';') if k]
     n = len(parts)
     vols = [p.volume/1000 for p in parts]
     rows = '\n'.join('| %s | %.0f × %.0f × %.0f | %.0f cm³ |' % (
@@ -589,21 +597,28 @@ flowchart TD
 
 | | |
 |---|---|
-| Printer | Bambu Lab A1, 0.4 nozzle |
-| Layer | 0.20 mm |
-| Walls | 4 loops |
-| Material | PLA Basic Grey |
-| Supports | None — the 3MF has supports switched off |
+| Printer | {ps['printer_settings_id']} |
+| Process | {ps['print_settings_id']}, changed: {', '.join(changed) or 'nothing'} |
+| Layer | {float(ps['layer_height']):.2f} mm |
+| Walls | {ps['wall_loops']} loops |
+| Infill | {ps['sparse_infill_density']} {ps['sparse_infill_pattern']} |
+| Material | {ps['filament_settings_id'][0]}, grey |
+| Supports | {'none' if ps['enable_support'] == '0' else 'ON — should not be'} |
+| Brim | {ps['brim_type'].replace('_', ' ')} (the slicer decides) |
 | Orientation | Flat, runners down, as laid out in the 3MF |
-| Plates | {n}, one part each |
-| Brim | {BRIM:.0f} mm — the largest part plus brim is {max(max(p.bounds[1][:2] - p.bounds[0][:2]) for p in parts) + 2*BRIM:.0f} of {BED:.0f} mm |
+| Plates | {n}, one part each — the largest part is {max(max(p.bounds[1][:2] - p.bounds[0][:2]) for p in parts):.0f} mm on a {BED:.0f} mm bed |
 
 Print part 1 first and try it on the sill before printing the rest: it checks
 the fit against the reveal and over the front edge trim.
 
 Files: `windowsill.3mf` is a Bambu Studio project with all {n} parts, one per
-plate, and the settings above already in it (A1 0.4 nozzle, 0.20mm Standard,
-PLA Basic). Open it, pick a plate, slice and print.
+plate, and the settings above already in it. Open it, pick a plate, slice and
+print. When sending, map the part to the slot holding your grey filament: the
+project assigns everything to filament 1.
+
+**Don't save over `windowsill.3mf`.** Bambu Studio saves the project back to
+the file it opened, replacing these settings with whatever the app has loaded
+at the time. If you want to keep your own changes, use Save As to another name.
 `windowsill-part1.stl` … `windowsill-part{n}.stl` are the same geometry separately.
 
 ## Fitting the magnets
