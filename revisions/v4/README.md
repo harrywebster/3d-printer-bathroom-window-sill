@@ -33,13 +33,13 @@ files in this folder.
 
 | Part | Size (mm) | Material |
 |---|---|---|
-| Part 1 — left end | 169 × 240 × 22 | 488 cm³ |
-| Part 2 — middle | 169 × 240 × 22 | 485 cm³ |
-| Part 3 — centre, plant pad | 169 × 240 × 22 | 560 cm³ |
-| Part 4 — middle | 169 × 240 × 22 | 485 cm³ |
-| Part 5 — right end | 169 × 240 × 22 | 488 cm³ |
+| Part 1 — left end | 169 × 240 × 22 | 455 cm³ |
+| Part 2 — middle | 169 × 240 × 22 | 452 cm³ |
+| Part 3 — centre, plant pad | 169 × 240 × 22 | 528 cm³ |
+| Part 4 — middle | 169 × 240 × 22 | 452 cm³ |
+| Part 5 — right end | 169 × 240 × 22 | 455 cm³ |
 
-Total 2,505 cm³ of solid model; the printed weight depends on the
+Total 2,343 cm³ of solid model; the printed weight depends on the
 infill, so read it from the slicer.
 
 ![Schematic](schematic.png)
@@ -82,12 +82,12 @@ flowchart TD
 - **Drip groove** — a 3.2 × 1.6 mm V under the overhang,
   11 mm past the sill edge. Any water creeping back along the
   underside drops off there instead of reaching the wall.
-- **Flat base on rubber feet.** The sill is ridged split-face tile, and its
-  grooves run along the sill, so a base lying flat on it would hold water where
-  it could never dry. The board stands on 20 stick-on rubber feet instead, which
-  leave an air gap over the whole sill. The base itself is flat so the first
-  layers have full contact with the plate: v2–v4 used printed runners, and
-  they lifted off the plate at the edges.
+- **Runners and air channels underneath.** The sill is ridged split-face tile,
+  and its grooves run along the sill, so a flat base would hold water in them
+  where it could never dry. Instead the board stands on 3.6 mm
+  runners with 16 channels per part between them, 6.0 wide and
+  3.0 tall, running from the window to just past the wall face. The
+  channel roofs are 45° gables, so they print without support.
 - **Magnets, not glue, between parts.** 16 CA007
   Ø6 × 3 mm magnets in teardrop pockets, two pairs per seam, so the
   board lifts apart for cleaning.
@@ -98,14 +98,14 @@ flowchart TD
 | | |
 |---|---|
 | Printer | Bambu Lab A1 0.4 nozzle |
-| Process | 0.20mm Standard @BBL A1, changed: brim_type, brim_width, sparse_infill_density |
+| Process | 0.20mm Standard @BBL A1, changed: sparse_infill_density |
 | Layer | 0.20 mm |
 | Walls | 2 loops |
 | Infill | 10% grid |
 | Material | Bambu PLA Basic @BBL A1, grey |
 | Supports | none |
-| Brim | 5 mm, outer only |
-| Orientation | Flat base down, as laid out in the 3MF |
+| Brim | auto brim (the slicer decides) |
+| Orientation | Flat, runners down, as laid out in the 3MF |
 | Plates | 5, one part each — the largest part is 240 mm on a 256 mm bed |
 
 Print part 1 first and try it on the sill before printing the rest: it checks
@@ -120,18 +120,6 @@ project assigns everything to filament 1.
 the file it opened, replacing these settings with whatever the app has loaded
 at the time. If you want to keep your own changes, use Save As to another name.
 `windowsill-part1.stl` … `windowsill-part5.stl` are the same geometry separately.
-
-## Fitting the feet
-
-20 round stick-on rubber feet, Ø10 mm, 4 under each part. Stick
-them on after the brim is off and the base is clean and dry:
-
-- 20 mm in from each end of the part,
-- at 25 mm and 195 mm from the back (window) edge.
-
-That keeps every foot on the sill — none under the 20 mm overhang —
-and at least 15 mm from a seam, so parts still meet flush. The
-schematic shows them dashed on the plan.
 
 ## Fitting the magnets
 
@@ -162,19 +150,21 @@ instead.
 
 | Check | Result |
 |---|---|
-| part 1 · closed mesh, one body | 487.8 cm³ |
-| part 2 · closed mesh, one body | 484.6 cm³ |
-| part 3 · closed mesh, one body | 560.5 cm³ |
-| part 4 · closed mesh, one body | 484.6 cm³ |
-| part 5 · closed mesh, one body | 487.8 cm³ |
+| part 1 · closed mesh, one body | 455.4 cm³ |
+| part 2 · closed mesh, one body | 452.2 cm³ |
+| part 3 · closed mesh, one body | 528.1 cm³ |
+| part 4 · closed mesh, one body | 452.2 cm³ |
+| part 5 · closed mesh, one body | 455.4 cm³ |
 | largest part + brim vs A1 bed | 250.0 of 256 |
 | parts side by side | 845.00 (model 845.0) |
 | overlap between neighbours | 0.000 mm³ |
 | magnet pocket cover, top / bottom | 1.88 / 2.30 mm |
-| rubber feet on the sill, clear of seams | 20 feet, 15 mm from a seam |
+| solid between channel and pocket | 6.3 mm |
+| cover over channel at its front end | 2.24 mm |
+| channel end to drip groove | 4.4 mm |
 | tip thickness | 4.32 mm |
-| shipped 3MF vs model volume | 5 objects, 2505.4 vs 2505.4 cm³ |
-| shipped STLs vs model volume | 2505.4 vs 2505.4 cm³ |
+| shipped 3MF vs model volume | 5 objects, 2343.4 vs 2343.4 cm³ |
+| shipped STLs vs model volume | 2343.4 vs 2343.4 cm³ |
 
 Mesh volumes are compared, not triangle counts: the boolean and hull
 libraries tessellate flat regions a few triangles differently between
@@ -235,5 +225,4 @@ changed. Modified designs therefore stay publicly available.
 | v1 | concept only, never shipped: 848 wide, 2.5° fall, flat base |
 | v2 | first shipped: 845 wide to the re-measured sill, 3.5° fall, underside runners with air channels for the ridged tile, front magnet pockets moved back to keep 1.6 mm cover. Its 3MF opens with every part off the bed — use v3 |
 | v3 | geometry unchanged from v2; the 3MF is now a Bambu Studio project, one part per plate. Its 4 walls and 5 mm brim were reset to stock when the project was opened in the app |
-| v4 | geometry unchanged; print settings are stock 0.20mm Standard with 10% infill instead of 15%, declared as a change so the app keeps it. Part 1 lifted at the edges in its first layers |
-| v5 | flat base instead of runners, so the first layers have full contact; the air gap comes from stick-on rubber feet. 5 mm outer brim declared |
+| v4 | geometry unchanged; print settings are stock 0.20mm Standard with 10% infill instead of 15%, declared as a change so the app keeps it |

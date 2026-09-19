@@ -18,9 +18,9 @@ PIPI   := $(shell command -v uv >/dev/null 2>&1 && echo "uv pip install --python
 .DEFAULT_GOAL := help
 
 help:
-	@echo "make concept-v2   render views + schematic from geom02 into $(BUILD)/v2 for sign-off"
-	@echo "make v2           build geom02, ship to revisions/v2 and the root aliases"
-	@echo "make build-v2     build into $(BUILD)/v2 only, ship nothing"
+	@echo "make concept-vN   render views + schematic from geomNN into $(BUILD)/vN for sign-off"
+	@echo "make vN           build geomNN, ship to revisions/vN and the root aliases"
+	@echo "make build-vN     build into $(BUILD)/vN only, ship nothing"
 	@echo "make verify       rebuild the current revision and diff it against what is shipped"
 	@echo "make slice-check  slice the shipped 3MF headless in Bambu Studio, every plate"
 	@echo "make deps         create $(VENV) and install the pinned requirements"

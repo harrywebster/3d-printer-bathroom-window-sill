@@ -64,16 +64,22 @@ Before any printable file exists, a concept is rendered and signed off:
 | Largest part + 5 mm brim | fits the A1 bed, 256 × 256 |
 | Parts side by side | span equals `width`, zero overlap between neighbours |
 | Magnet pocket cover | ≥ 1.6 mm above and below every pocket |
-| Channel to magnet pocket | ≥ 1.6 mm solid between them |
-| Cover over each channel | ≥ 1.6 mm at its thinnest (front) end |
-| Channel end to drip groove | ≥ 2 mm, so the groove stays continuous |
+| Rubber feet (v5+) | every foot on the sill (none under the overhang), ≥ 5 mm from a seam |
+| Channels (v2–v4 only) | ≥ 1.6 mm to a pocket and over the roof; ≥ 2 mm short of the drip groove |
 | Tip thickness | ≥ 4 mm |
 | Shipped 3MF and STLs reloaded vs model volume | must match |
 
-Then, after every ship: **`make slice-check`**. It opens the shipped 3MF in
-Bambu Studio headless and slices every plate using only the settings inside
-the file. It must report one part per plate, no supports, and `Success`. It is
-the only check that proves Bambu Studio reads the file the way we meant.
+Then, after every ship: **`make slice-check`**. It does two things:
+
+1. **Declarations.** Every setting in the 3MF that differs from its stock
+   system preset must be listed in `different_settings_to_system`. It fails
+   on anything unlisted.
+2. **Slicing.** It opens the shipped 3MF in Bambu Studio headless and slices
+   every plate using only the settings inside the file. It must report one
+   part per plate, no supports, and `Success`.
+
+Only the two together prove that Bambu Studio, headless *and* in the app, reads
+the file the way we meant.
 
 > **Why slice-check.** v2 passed every volume check and still shipped a 3MF
 > that Bambu Studio opened with all five parts on plate 1, off the bed. A
@@ -84,6 +90,11 @@ Report the numbers, don't assert "verified". Compare meshes by volume and
 bounds, never byte-for-byte — the boolean and hull libraries tessellate flat
 regions a few triangles differently between versions. A real regression moves
 a volume or a bound.
+
+> **Why the declaration check.** v3's 4 walls and 5 mm brim sliced fine
+> headless, but they weren't declared as changes, so the app reset them to
+> stock the moment the project was opened. The headless slicer doesn't do
+> that reset, so slicing alone could never catch it.
 
 > **Why the cover check.** v1's front magnet pocket sat at y = 100 with only
 > 0.85 mm of plastic between its roof and the drain surface. Nothing checked
@@ -97,12 +108,24 @@ a volume or a bound.
 
 - **Plate positions:** plate *i* sits at column `i % cols`, row `i // cols`, where
   `cols = ceil(sqrt(n))`, spaced `256 × 1.2` apart, with rows running towards −y.
-- **Settings block:** it must be complete. With only a key or two, Bambu Studio
-  segfaults on load; it crashed three times during testing on 19 Sep 2026.
-  `src/bambu/project_settings.config` was written by Bambu Studio from its
-  A1 0.4 / 0.20mm Standard / PLA Basic system presets, then given 4 walls, a
-  5 mm brim, supports off, and the grey filament colour. Change print settings
-  there, never by hand in the build.
+- **Settings block:** it must be complete. With only a key or two, Bambu
+  Studio crashes on load; it crashed four times during testing on 19 Sep 2026.
+  `src/bambu/project_settings.config` holds the A1 0.4 / 0.20mm Standard / PLA
+  Basic system presets as Bambu Studio writes them, plus the grey filament
+  colour.
+- **Changing a setting:** every deliberate change must also be listed in
+  `different_settings_to_system`, a list of `;`-separated keys: [process,
+  one per filament, machine]. Anything unlisted is silently reset to stock
+  when the app opens the project. Change print settings in that file, never
+  by hand in the build. The README reads its print-settings table from it.
+- **Stock values:** `src/bambu/presets.py` flattens the installed system
+  presets to compare against. Where both define a key, the filament preset
+  overrides the process preset (e.g. `pre_start_fan_time`).
+- **Project files:** Bambu Studio saves the project back over the file it
+  opened, with whatever presets and filaments the app has loaded (including
+  the AMS's four filaments). That happened to the root `windowsill.3mf` at
+  12:08 on 19 Sep 2026, and it was committed that way at v3. Before
+  committing, check that the root 3MF still matches `revisions/vNN/`.
 - **Headless CLI:** the system profiles use `inherits`, and the CLI does not
   follow it. Passed straight to `--load-settings`, they fall back to a
   200 × 200 bed. `make slice-check` doesn't pass them at all; it slices on the
@@ -137,17 +160,19 @@ Don't prune them. The venv here is uv-managed (no pip inside it);
 
 ## Design invariants — don't break these silently
 
-- **No bottom-edge chamfer, and runners, not a flat base.** The perimeter
-  meets the plate square *(EasyPick v4 lifted off the plate mid-print because
-  of a 1 mm bottom chamfer)*. The underside is runners with air channels
-  between them, running front-to-back across the tile ridges: a flat base on
-  that tile traps water in the ridge grooves, where it can't dry. Never use
-  separate feet — the base between them would be an unsupported ceiling.
+- **Flat base, full contact, no bottom-edge chamfer.** The whole footprint
+  meets the plate *(EasyPick v4 lifted off the plate mid-print because of a
+  1 mm bottom chamfer)*. Nothing is printed underneath except the drip groove.
+  The air gap over the ridged tile, which stops water sitting in the tile
+  grooves, comes from the owner's 20 stick-on Ø10 rubber feet: 4 per part,
+  positions in `feet_xy()`, all on the sill. *(v2–v4 printed runners with
+  45° air channels instead. v4 part 1 lifted at the edges in its first 10
+  layers: thin separate strips, ~37% contact, through the first 3 mm.
+  Removing them also cut each plate from 6.3 h to 4.8 h.)* Never print
+  underside features in the first layers to replace the feet.
 - **Overhangs ≥ 45°.** Magnet pockets are teardrops with a 45° roof; the drip
-  groove is a V with 45° flanks; the channels have 45° gable roofs
-  (`chan_d = chan_w / 2`). Nothing on this board needs support.
-- **Feature sizes on line-width multiples** (0.4 mm). Rib widths, rim widths,
-  runner widths.
+  groove is a V with 45° flanks. Nothing on this board needs support.
+- **Feature sizes on line-width multiples** (0.4 mm). Rib widths, rim widths.
 - **No seam under the plant pad.** An odd number of parts, the centre one
   carrying the whole pad.
 - **Seams fall midway between ribs.** `rib_pitch` divides the part width so no
@@ -155,18 +180,31 @@ Don't prune them. The venv here is uv-managed (no pip inside it);
 - **The top falls towards the bath everywhere except the pad.** Nothing may
   create a dam across the flow; the pad's prow exists so the pad itself isn't
   one.
-- **Channels stop short of the drip groove.** They vent just past the wall
-  face; running them into the groove would give a creeping film a path back.
 - **Magnet polarity is part of the assembly, not the model.** Every left-hand
   seam face takes N outward and every right-hand one S outward, so any part
   mates with its neighbour. Say so wherever assembly is described.
 
 ## Printing
 
-Bambu Lab A1, 0.4 nozzle, 0.20 mm layers, 4 wall loops, 15% infill, no
-supports, 5 mm brim. PLA Basic Grey. One part per plate, flat, runners down, as
-it sits on the sill. v3 per Bambu Studio's own slice: about 1.19 kg and 34 h
-over five plates — more than one 1 kg spool.
+Bambu Lab A1, 0.4 nozzle, stock 0.20mm Standard (2 walls, no supports) with
+two declared changes: 10% infill instead of 15%, and a 5 mm outer brim instead
+of auto (edges lifted on the A1). PLA Basic Grey. One part per plate, flat base
+down, as it sits on the sill. The project assigns every part to
+filament 1; the owner's AMS has white in slot 1, so the part must be mapped to
+the grey slot when sending.
+
+Per `make slice-check` at v5: about 866 g and 23.2 h over five plates, 4.0–4.8
+h each (v4 with runners: 919 g, 30.5 h). Most of what's left is inherent to a
+solid 19 mm wedge: a sloped top puts solid layers and slow internal bridges
+under the whole top surface. Measured on plate 1 at v4: 15% → 10% infill saves
+17 min and 18.5 g. Top shell 5 → 4 layers saves
+nothing (the 1 mm shell thickness wins). Thicker layers would show as steps on
+the slope. Hollowing the underside is not the way to save more: it puts features
+back into the first layers, which is what lifted at v4.
+
+The owner's first print also jammed filament, which is a feed or filament
+problem rather than the model: check the spool, the feed tube, and that the
+part is mapped to the grey slot (slot 3, listed as PLA Matte).
 
 G-code is not generated or kept in this repo. It is specific to the printer,
 filament and calibration state, so slice it locally from the 3MF each time.
