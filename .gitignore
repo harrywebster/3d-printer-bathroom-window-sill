@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# build scratch — deliverables live in revisions/ and the root aliases
+build/
+
+# local venv, recreated by: make deps
+.venv/

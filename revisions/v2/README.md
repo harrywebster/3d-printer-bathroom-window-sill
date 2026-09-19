@@ -101,7 +101,7 @@ flowchart TD
 | Layer | 0.20 mm |
 | Walls | 4 loops |
 | Material | PLA Basic Grey |
-| Supports | None — the 3MF has supports switched off |
+| Supports | None — the 3MF sets `enable_support` to 0 |
 | Orientation | Flat, runners down, as laid out in the 3MF |
 | Plates | 5, one part each |
 | Brim | 5 mm — the largest part plus brim is 250 of 256 mm |
@@ -109,9 +109,7 @@ flowchart TD
 Print part 1 first and try it on the sill before printing the rest: it checks
 the fit against the reveal and over the front edge trim.
 
-Files: `windowsill.3mf` is a Bambu Studio project with all 5 parts, one per
-plate, and the settings above already in it (A1 0.4 nozzle, 0.20mm Standard,
-PLA Basic). Open it, pick a plate, slice and print.
+Files: `windowsill.3mf` carries all 5 parts, one per plate.
 `windowsill-part1.stl` … `windowsill-part5.stl` are the same geometry separately.
 
 ## Fitting the magnets
@@ -216,5 +214,4 @@ changed. Modified designs therefore stay publicly available.
 | Version | Change |
 |---|---|
 | v1 | concept only, never shipped: 848 wide, 2.5° fall, flat base |
-| v2 | first shipped: 845 wide to the re-measured sill, 3.5° fall, underside runners with air channels for the ridged tile, front magnet pockets moved back to keep 1.6 mm cover. Its 3MF opens with every part off the bed — use v3 |
-| v3 | geometry unchanged from v2; the 3MF is now a Bambu Studio project, one part per plate, with the print settings built in |
+| v2 | first shipped: 845 wide to the re-measured sill, 3.5° fall, underside runners with air channels for the ridged tile, front magnet pockets moved back to keep 1.6 mm cover |
