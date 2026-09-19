@@ -64,9 +64,8 @@ Before any printable file exists, a concept is rendered and signed off:
 | Largest part + 5 mm brim | fits the A1 bed, 256 × 256 |
 | Parts side by side | span equals `width`, zero overlap between neighbours |
 | Magnet pocket cover | ≥ 1.6 mm above and below every pocket |
-| Channel to magnet pocket | ≥ 1.6 mm solid between them |
-| Cover over each channel | ≥ 1.6 mm at its thinnest (front) end |
-| Channel end to drip groove | ≥ 2 mm, so the groove stays continuous |
+| Rubber feet (v5+) | every foot on the sill (none under the overhang), ≥ 5 mm from a seam |
+| Channels (v2–v4 only) | ≥ 1.6 mm to a pocket and over the roof; ≥ 2 mm short of the drip groove |
 | Tip thickness | ≥ 4 mm |
 | Shipped 3MF and STLs reloaded vs model volume | must match |
 
@@ -161,17 +160,19 @@ Don't prune them. The venv here is uv-managed (no pip inside it);
 
 ## Design invariants — don't break these silently
 
-- **No bottom-edge chamfer, and runners, not a flat base.** The perimeter
-  meets the plate square *(EasyPick v4 lifted off the plate mid-print because
-  of a 1 mm bottom chamfer)*. The underside is runners with air channels
-  between them, running front-to-back across the tile ridges: a flat base on
-  that tile traps water in the ridge grooves, where it can't dry. Never use
-  separate feet — the base between them would be an unsupported ceiling.
+- **Flat base, full contact, no bottom-edge chamfer.** The whole footprint
+  meets the plate *(EasyPick v4 lifted off the plate mid-print because of a
+  1 mm bottom chamfer)*. Nothing is printed underneath except the drip groove.
+  The air gap over the ridged tile, which stops water sitting in the tile
+  grooves, comes from the owner's 20 stick-on Ø10 rubber feet: 4 per part,
+  positions in `feet_xy()`, all on the sill. *(v2–v4 printed runners with
+  45° air channels instead. v4 part 1 lifted at the edges in its first 10
+  layers: thin separate strips, ~37% contact, through the first 3 mm.
+  Removing them also cut each plate from 6.3 h to 4.8 h.)* Never print
+  underside features in the first layers to replace the feet.
 - **Overhangs ≥ 45°.** Magnet pockets are teardrops with a 45° roof; the drip
-  groove is a V with 45° flanks; the channels have 45° gable roofs
-  (`chan_d = chan_w / 2`). Nothing on this board needs support.
-- **Feature sizes on line-width multiples** (0.4 mm). Rib widths, rim widths,
-  runner widths.
+  groove is a V with 45° flanks. Nothing on this board needs support.
+- **Feature sizes on line-width multiples** (0.4 mm). Rib widths, rim widths.
 - **No seam under the plant pad.** An odd number of parts, the centre one
   carrying the whole pad.
 - **Seams fall midway between ribs.** `rib_pitch` divides the part width so no
@@ -179,27 +180,31 @@ Don't prune them. The venv here is uv-managed (no pip inside it);
 - **The top falls towards the bath everywhere except the pad.** Nothing may
   create a dam across the flow; the pad's prow exists so the pad itself isn't
   one.
-- **Channels stop short of the drip groove.** They vent just past the wall
-  face; running them into the groove would give a creeping film a path back.
 - **Magnet polarity is part of the assembly, not the model.** Every left-hand
   seam face takes N outward and every right-hand one S outward, so any part
   mates with its neighbour. Say so wherever assembly is described.
 
 ## Printing
 
-Bambu Lab A1, 0.4 nozzle, stock 0.20mm Standard (2 walls, auto brim, no
-supports) with 10% infill instead of 15%. PLA Basic Grey. One part per plate,
-flat, runners down, as it sits on the sill. The project assigns every part to
+Bambu Lab A1, 0.4 nozzle, stock 0.20mm Standard (2 walls, no supports) with
+two declared changes: 10% infill instead of 15%, and a 5 mm outer brim instead
+of auto (edges lifted on the A1). PLA Basic Grey. One part per plate, flat base
+down, as it sits on the sill. The project assigns every part to
 filament 1; the owner's AMS has white in slot 1, so the part must be mapped to
 the grey slot when sending.
 
-Per `make slice-check` at v4: about 919 g and 30.5 h over five plates, 5.5–6.3
-h each. The time is inherent to a solid 19 mm wedge: a sloped top puts solid
-layers and slow internal bridges under the whole top surface. Measured on plate
-1: 15% → 10% infill saves 17 min and 18.5 g. Top shell 5 → 4 layers saves
+Per `make slice-check` at v5: about 866 g and 23.2 h over five plates, 4.0–4.8
+h each (v4 with runners: 919 g, 30.5 h). Most of what's left is inherent to a
+solid 19 mm wedge: a sloped top puts solid layers and slow internal bridges
+under the whole top surface. Measured on plate 1 at v4: 15% → 10% infill saves
+17 min and 18.5 g. Top shell 5 → 4 layers saves
 nothing (the 1 mm shell thickness wins). Thicker layers would show as steps on
-the slope. The one real saving left is a geometry change to hollow out more of
-the underside, which is a new revision, and it must be slice-measured first.
+the slope. Hollowing the underside is not the way to save more: it puts features
+back into the first layers, which is what lifted at v4.
+
+The owner's first print also jammed filament, which is a feed or filament
+problem rather than the model: check the spool, the feed tube, and that the
+part is mapped to the grey slot (slot 3, listed as PLA Matte).
 
 G-code is not generated or kept in this repo. It is specific to the printer,
 filament and calibration state, so slice it locally from the 3MF each time.

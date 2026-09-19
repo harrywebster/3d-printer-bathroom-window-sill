@@ -40,6 +40,23 @@ def _crop(mesh, lo, hi):
 
 
 # ----------------------------------------------------------------- views
+FOOT = (0.18, 0.19, 0.20)
+FOOT_T = 3.0                              # drawn thickness of a stick-on foot
+
+def _feet(g, part):
+    """The owner's stick-on rubber feet under one part, as dark discs — not
+    part of the model, drawn so their positions can be signed off."""
+    if not hasattr(g, 'feet_xy'):
+        return []
+    x0, x1 = g.part_x[part], g.part_x[part + 1]
+    out = []
+    for x, y in g.feet_xy():
+        if x0 < x < x1:
+            d = trimesh.creation.cylinder(radius=g.foot_d/2, height=FOOT_T, sections=32)
+            d.apply_translation([x, y, -FOOT_T/2])
+            out.append((d, FOOT))
+    return out
+
 def views(g, parts, tag, concept=True):
     board = [(p, GREY) for p in parts]
     pr = g.props()
@@ -66,7 +83,9 @@ def views(g, parts, tag, concept=True):
         ('Centre part — the level plant pad', centre, 55, 30, 900, 760),
         ('Seam face — magnet pockets', [(seam, GREY)], 20, 18, 900, 760),
         ('The overhang — end on, clear of the wall', lip, 180, 7, 900, 520),
-        ('Underside — runners, air channels, drip groove', [(parts[1], GREY)], -62, -32, 900, 760),
+        ('Underside — runners, air channels, drip groove' if g.chan_w else
+         'Underside — flat base, drip groove, rubber feet (dark)', [(parts[1], GREY)] + _feet(g, 1),
+         -62, -32, 900, 760),
     ]
     # The underside faces away from the default headlight; light it from below.
     lights = {len(big) + len(small) - 1: [0.35, -0.45, -0.82]}
@@ -155,6 +174,16 @@ def schematic(g, board, parts, tag):
         ax.plot([s, s], [-4, g.depth + 4], color='#c0392b', lw=0.9, ls=(0, (5, 3)), zorder=6)
         for y in g.mag_y:
             ax.plot(s, y, 'o', ms=3.2, mfc='#c0392b', mec='none', zorder=7)
+    if hasattr(g, 'feet_xy'):
+        for x, y in g.feet_xy():
+            ax.add_patch(plt.Circle((x, y), g.foot_d/2, fill=False, ec='#6a3d9a', lw=0.9,
+                                    ls=(0, (2, 1.5)), zorder=8))
+        fx, fy = g.feet_xy()[1]
+        ax.annotate('rubber feet underneath (dashed), %d per part — %d in all'
+                    % (len(g.feet_xy()) // len(g.part_w), len(g.feet_xy())),
+                    xy=(fx, fy), xytext=(-g.width/2 - 40, g.depth + 38),
+                    color='#6a3d9a', fontsize=7.8,
+                    arrowprops=dict(arrowstyle='->', color='#6a3d9a', lw=0.7))
     ax.plot([-g.width/2 - 20, g.width/2 + 20], [g.sill_d, g.sill_d], color='#7d8790',
             lw=0.8, ls=(0, (2, 2)), zorder=6)
     ax.text(g.width/2 + 22, g.sill_d, 'sill edge', va='center', fontsize=7.5, color='#7d8790')
@@ -191,7 +220,7 @@ def schematic(g, board, parts, tag):
                 xytext=(120, -44), **lab)
     ax.set_title('Plan — seen from above, window at the top', fontsize=11.5, weight='bold',
                  color=INK, pad=24)
-    ax.set_xlim(-g.width/2 - 60, g.width/2 + 90); ax.set_ylim(g.depth + 40, -60)
+    ax.set_xlim(-g.width/2 - 60, g.width/2 + 90); ax.set_ylim(g.depth + 48, -60)
     ax.set_aspect('equal'); ax.axis('off')
 
     # ---- section through the ribbed field, between two channels ----
@@ -256,9 +285,20 @@ def schematic(g, board, parts, tag):
                      xy=(cx[11] + g.chan_pitch/2, 0.2), xytext=(cx[11] + 6, -10), **lab)
         ax6.annotate('solid next to the seam\nfor the magnet pockets', xy=(g.seams[1] - 3, 4),
                      xytext=(g.seams[1] - 70, float(g.z_top(ys)) + 6), **lab)
-    ax6.set_title('Section across part 2 at %.0f from the window — the runners' % ys,
+    if not g.chan_w and hasattr(g, 'feet_xy'):
+        for x, _ in {(x, 0) for x, _ in g.feet_xy() if x_lo < x < x_hi}:
+            ax6.add_patch(Rectangle((x - g.foot_d/2, -FOOT_T), g.foot_d, FOOT_T, fc='#4a4f55',
+                                    ec=INK, lw=0.6, zorder=3))
+        _dim(ax6, (g.seams[0] + 6, 0), (g.seams[0] + 6, float(g.z_top(ys))), '%.1f' % float(g.z_top(ys)),
+             vert=True, fs=7)
+        ax6.annotate('flat base — full contact with the plate while printing',
+                     xy=(g.seams[0] + 45, 0), xytext=(g.seams[0] + 20, -12), **lab)
+        ax6.annotate('stick-on rubber feet (yours): the air gap\nover the tile ridges',
+                     xy=(g.part_x[2] - g.foot_inset_x - 3, -FOOT_T), xytext=(g.part_x[2] - 100, -13.5), **lab)
+    ax6.set_title('Section across part 2 at %.0f from the window — %s' % (
+                  ys, 'the runners' if g.chan_w else 'flat base on rubber feet'),
                   fontsize=11.5, weight='bold', color=INK)
-    ax6.set_xlim(x_lo - 8, x_hi + 8); ax6.set_ylim(-13, float(g.z_top(ys)) + 12)
+    ax6.set_xlim(x_lo - 8, x_hi + 8); ax6.set_ylim(-16, float(g.z_top(ys)) + 12)
     ax6.set_aspect(1.6); ax6.axis('off')
     ax6.text(x_hi + 6, -12, 'vertical scale ×1.6, sill dashed', ha='right', fontsize=7, color='#8a949e')
 
@@ -292,7 +332,7 @@ def schematic(g, board, parts, tag):
     _dim(ax5, (ox + wmax + 10, oy), (ox + wmax + 10, oy + g.depth), '%.0f' % g.depth, vert=True, fs=7.5)
     ax5.text(BED/2, -8, 'A1 bed %.0f × %.0f — one part per plate, %.0f mm brim dashed'
              % (BED, BED, BRIM), ha='center', va='top', fontsize=7.8, color='#2a333c')
-    ax5.text(ox + wmax/2, oy + g.depth/2, 'printed flat,\nas it sits,\nrunners down', ha='center',
+    ax5.text(ox + wmax/2, oy + g.depth/2, 'printed flat,\nas it sits,\n' + ('runners down' if g.chan_w else 'flat base down'), ha='center',
              va='center', fontsize=8, color='#2a333c', zorder=5)
     ax5.set_title('Print layout — %d plates' % len(parts), fontsize=11, weight='bold', color=INK)
     ax5.set_xlim(-10, BED + 40); ax5.set_ylim(-30, BED + 25); ax5.set_aspect('equal'); ax5.axis('off')
@@ -335,6 +375,13 @@ def checks(g, board, parts):
         out.append(('cover over channel at its front end', '%.2f mm' % roof, roof >= 1.6))
         gap = (g.drip_y - g.drip_w/2) - g.chan_y1
         out.append(('channel end to drip groove', '%.1f mm' % gap, gap >= 2.0))
+    if hasattr(g, 'feet_xy'):
+        f = g.feet_xy()
+        inside = all(g.part_x[0] + g.foot_d/2 <= x <= g.part_x[-1] - g.foot_d/2 and
+                     g.foot_d/2 <= y <= g.sill_d - g.foot_d/2 for x, y in f)
+        clear = min(abs(x - s) for x, _ in f for s in g.seams) - g.foot_d/2
+        out.append(('rubber feet on the sill, clear of seams', '%d feet, %.0f mm from a seam'
+                    % (len(f), clear), inside and clear >= 5))
     out.append(('tip thickness', '%.2f mm' % g.tip_t, g.tip_t >= 4.0))
     return out
 
@@ -454,13 +501,14 @@ def export(g, parts, tag):
                 '3dmanufacturing/2013/01/3dmodel"/></Relationships>')
     rel_model = ('<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.'
                  'openxmlformats.org/package/2006/relationships">%s</Relationships>' % ''.join(rels))
+    under = 'runners' if g.chan_w else 'flat base'
     readme = ('Window-sill draining board %s\n%d parts, one per plate, PLA Basic Grey %s.\n'
-              'Every part flat on the plate as modelled, runners down. No rotation.\n\n'
+              'Every part flat on the plate as modelled, %s down. No rotation.\n\n'
               'NO SUPPORTS. project_settings.config sets enable_support to 0.\n'
-              'Nothing on this board is unsupported: the air channels underneath,\n'
-              'the magnet pockets and the drip groove all have 45 degree roofs.\n'
+              'Nothing on this board is unsupported: the magnet pockets and the\n'
+              'drip groove%s have 45 degree roofs.\n'
               'If the slicer proposes support anywhere, the orientation is wrong.\n'
-              % (tag, n, GREY_HEX))
+              % (tag, n, GREY_HEX, under, ' and the air channels' if g.chan_w else ''))
     path = OUT + 'windowsill-%s.3mf' % tag
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr('[Content_Types].xml', ct)
@@ -486,7 +534,10 @@ HISTORY = [
            'part per plate. Its 4 walls and 5 mm brim were reset to stock when the '
            'project was opened in the app'),
     ('v4', 'geometry unchanged; print settings are stock 0.20mm Standard with 10% '
-           'infill instead of 15%, declared as a change so the app keeps it'),
+           'infill instead of 15%, declared as a change so the app keeps it. Part 1 '
+           'lifted at the edges in its first layers'),
+    ('v5', 'flat base instead of runners, so the first layers have full contact; the '
+           'air gap comes from stick-on rubber feet. 5 mm outer brim declared'),
 ]
 
 def readme(g, parts, tag, res):
@@ -495,6 +546,36 @@ def readme(g, parts, tag, res):
     changed = [k for k in ps['different_settings_to_system'][0].split(';') if k]
     n = len(parts)
     vols = [p.volume/1000 for p in parts]
+    if g.chan_w:
+        underside = f"""- **Runners and air channels underneath.** The sill is ridged split-face tile,
+  and its grooves run along the sill, so a flat base would hold water in them
+  where it could never dry. Instead the board stands on {g.chan_pitch - g.chan_w:.1f} mm
+  runners with {g.chan_n} channels per part between them, {g.chan_w:.1f} wide and
+  {g.chan_d:.1f} tall, running from the window to just past the wall face. The
+  channel roofs are 45° gables, so they print without support."""
+        feet = ''
+    else:
+        nf = len(g.feet_xy())
+        underside = f"""- **Flat base on rubber feet.** The sill is ridged split-face tile, and its
+  grooves run along the sill, so a base lying flat on it would hold water where
+  it could never dry. The board stands on {nf} stick-on rubber feet instead, which
+  leave an air gap over the whole sill. The base itself is flat so the first
+  layers have full contact with the plate: v2–v4 used printed runners, and
+  they lifted off the plate at the edges."""
+        per = nf // len(g.part_w)
+        feet = f"""## Fitting the feet
+
+{nf} round stick-on rubber feet, Ø{g.foot_d:.0f} mm, {per} under each part. Stick
+them on after the brim is off and the base is clean and dry:
+
+- {g.foot_inset_x:.0f} mm in from each end of the part,
+- at {g.foot_y[0]:.0f} mm and {g.foot_y[1]:.0f} mm from the back (window) edge.
+
+That keeps every foot on the sill — none under the {g.overhang:.0f} mm overhang —
+and at least {min(abs(x - s) for x, _ in g.feet_xy() for s in g.seams) - g.foot_d/2:.0f} mm from a seam, so parts still meet flush. The
+schematic shows them dashed on the plan.
+
+"""
     rows = '\n'.join('| %s | %.0f × %.0f × %.0f | %.0f cm³ |' % (
         part_name(g, i), *(p.bounds[1] - p.bounds[0]), vols[i]) for i, p in enumerate(parts))
     chk = '\n'.join('| %s | %s |' % (lbl.replace('—', '·'), val if ok else '**FAIL** ' + val)
@@ -582,12 +663,7 @@ flowchart TD
 - **Drip groove** — a {g.drip_w:.1f} × {g.drip_d:.1f} mm V under the overhang,
   {g.drip_y - g.sill_d:.0f} mm past the sill edge. Any water creeping back along the
   underside drops off there instead of reaching the wall.
-- **Runners and air channels underneath.** The sill is ridged split-face tile,
-  and its grooves run along the sill, so a flat base would hold water in them
-  where it could never dry. Instead the board stands on {g.chan_pitch - g.chan_w:.1f} mm
-  runners with {g.chan_n} channels per part between them, {g.chan_w:.1f} wide and
-  {g.chan_d:.1f} tall, running from the window to just past the wall face. The
-  channel roofs are 45° gables, so they print without support.
+{underside}
 - **Magnets, not glue, between parts.** {2*len(g.mag_y)*len(g.seams)} CA007
   Ø{g.mag_d:.0f} × {g.mag_t:.0f} mm magnets in teardrop pockets, two pairs per seam, so the
   board lifts apart for cleaning.
@@ -604,8 +680,8 @@ flowchart TD
 | Infill | {ps['sparse_infill_density']} {ps['sparse_infill_pattern']} |
 | Material | {ps['filament_settings_id'][0]}, grey |
 | Supports | {'none' if ps['enable_support'] == '0' else 'ON — should not be'} |
-| Brim | {ps['brim_type'].replace('_', ' ')} (the slicer decides) |
-| Orientation | Flat, runners down, as laid out in the 3MF |
+| Brim | {'auto (the slicer decides)' if ps['brim_type'] == 'auto_brim' else '%s mm, %s' % (ps['brim_width'], ps['brim_type'].replace('_', ' '))} |
+| Orientation | {'Flat, runners' if g.chan_w else 'Flat base'} down, as laid out in the 3MF |
 | Plates | {n}, one part each — the largest part is {max(max(p.bounds[1][:2] - p.bounds[0][:2]) for p in parts):.0f} mm on a {BED:.0f} mm bed |
 
 Print part 1 first and try it on the sill before printing the rest: it checks
@@ -621,7 +697,7 @@ the file it opened, replacing these settings with whatever the app has loaded
 at the time. If you want to keep your own changes, use Save As to another name.
 `windowsill-part1.stl` … `windowsill-part{n}.stl` are the same geometry separately.
 
-## Fitting the magnets
+{feet}## Fitting the magnets
 
 Each seam face has two pockets, Ø{g.pocket_d:.1f} × {g.pocket_t:.1f} mm deep, so a magnet sits
 flush or just below the face. Polarity matters: every magnet in a **right-hand**
